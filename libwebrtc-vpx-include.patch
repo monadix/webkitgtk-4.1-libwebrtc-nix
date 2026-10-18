@@ -1,0 +1,18 @@
+--- a/Source/ThirdParty/libwebrtc/CMakeLists.txt
++++ b/Source/ThirdParty/libwebrtc/CMakeLists.txt
+@@ -2669,6 +2669,7 @@
+ 
+ set(webrtc_INCLUDE_DIRECTORIES PRIVATE
+     Source
++    Source/third_party/libvpx/source/libvpx
+     Source/third_party/abseil-cpp
+     Source/third_party/abseil-cpp/absl/types
+     Source/third_party/boringssl/src/include
+@@ -2692,7 +2693,6 @@
+ if (APPLE)
+     list(APPEND webrtc_INCLUDE_DIRECTORIES PRIVATE
+         Source/third_party/libaom/source/libaom
+-        Source/third_party/libvpx/source/libvpx
+         Source/webrtc/webkit_sdk/objc
+         Source/webrtc/webkit_sdk/objc/base
+         Source/webrtc/webkit_sdk/objc/Framework/Classes

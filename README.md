@@ -1,10 +1,11 @@
 # WebKitGTK 4.1 with LibWebRTC
 
 A pinned development WebKitGTK build for GTK3 applications such as Luakit.
-It retains the `webkit2gtk-4.1` API and Nixpkgs sandbox patches, adds NASM,
-libevent, ALSA and Opus, and enables `ENABLE_WEB_RTC` without enabling all
-experimental features. A small CMake patch exposes the bundled libvpx headers
-to LibWebRTC on Linux. Currently targets `x86_64-linux`.
+It retains the `webkit2gtk-4.1` API and Nixpkgs sandbox mounts, adapting their
+patch to WebKit's UTF-8 string API. It adds NASM, libevent, ALSA and Opus, and
+enables `ENABLE_WEB_RTC` without enabling all experimental features. A small
+CMake patch exposes the bundled libvpx headers to LibWebRTC on Linux. Currently
+targets `x86_64-linux`.
 
 `source.json` pins WebKit's commit, source hash, version and date. `flake.lock`
 pins Nixpkgs separately; daily WebKit updates leave Nixpkgs unchanged.

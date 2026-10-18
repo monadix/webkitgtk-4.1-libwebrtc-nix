@@ -1,0 +1,15 @@
+--- a/Source/WebKit/UIProcess/Launcher/glib/BubblewrapLauncher.cpp
++++ b/Source/WebKit/UIProcess/Launcher/glib/BubblewrapLauncher.cpp
+@@ -960,6 +960,12 @@
+         sandboxArgs.append("--unshare-ipc"_s);
+     }
+ 
++    // Nix directories.
++    sandboxArgs.appendList<UTF8CString>({ "--ro-bind"_s, "@storeDir@"_s, "@storeDir@"_s });
++    sandboxArgs.appendList<UTF8CString>({ "--ro-bind-try"_s, "/run/current-system"_s, "/run/current-system"_s });
++    sandboxArgs.appendList<UTF8CString>({ "--ro-bind-try"_s, "@driverLink@/lib"_s, "@driverLink@/lib"_s });
++    sandboxArgs.appendList<UTF8CString>({ "--ro-bind-try"_s, "@driverLink@/share"_s, "@driverLink@/share"_s });
++
+ #if ENABLE(DEVELOPER_MODE)
+     const char* execDirectory = g_getenv("WEBKIT_EXEC_PATH");
+     if (execDirectory) {

@@ -1,4 +1,7 @@
 {
+  lib,
+  replaceVars,
+  addDriverRunpath,
   webkitgtk_4_1,
   fetchgit,
   nasm,
@@ -23,7 +26,18 @@ webkitgtk_4_1.overrideAttrs (oldAttrs: {
     ];
     nonConeMode = true;
   };
-  patches = oldAttrs.patches ++ [ ./libwebrtc-vpx-include.patch ];
+  patches =
+    map (
+      patch:
+      if lib.getName patch == "fix-bubblewrap-paths.patch" then
+        replaceVars ./fix-bubblewrap-paths.patch {
+          inherit (builtins) storeDir;
+          inherit (addDriverRunpath) driverLink;
+        }
+      else
+        patch
+    ) oldAttrs.patches
+    ++ [ ./libwebrtc-vpx-include.patch ];
   nativeBuildInputs = oldAttrs.nativeBuildInputs ++ [ nasm ];
   buildInputs = oldAttrs.buildInputs ++ [
     libevent

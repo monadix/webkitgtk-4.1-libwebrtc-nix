@@ -8,14 +8,12 @@
   libevent,
   alsa-lib,
   libopus,
+  source ? builtins.fromJSON (builtins.readFile ./source.json),
 }:
-let
-  source = builtins.fromJSON (builtins.readFile ./source.json);
-in
 webkitgtk_4_1.overrideAttrs (oldAttrs: {
   version = "${source.version}-unstable-${source.date}";
   src = fetchgit {
-    url = "https://github.com/WebKit/WebKit.git";
+    url = source.url or "https://github.com/WebKit/WebKit.git";
     inherit (source) rev hash;
     fetchSubmodules = false;
     # Keep this identical to scripts/update.sh's prefetch selection.

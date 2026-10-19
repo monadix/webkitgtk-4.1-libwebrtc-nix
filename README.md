@@ -14,7 +14,7 @@ Check the package without compiling it:
 
 ```sh
 nix flake check --no-build
-nix develop --command actionlint .github/workflows/build.yml .github/workflows/update.yml
+nix develop --command actionlint
 nix develop --command shellcheck scripts/update.sh
 ```
 
@@ -69,4 +69,4 @@ On other systems, add the equivalent settings to the Nix daemon's `nix.conf`.
 Downloading these public binaries does not require an authentication token.
 
 See [CI setup and retention](docs/ci.md) for daily updates, build workflows,
-cache configuration and rollback behavior.
+cache configuration, rollback behavior and the manual patched-fork validation workflow.

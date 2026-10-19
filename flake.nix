@@ -16,11 +16,25 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
       webkit = pkgs.callPackage ./package.nix { };
+      validation = pkgs.callPackage ./validation.nix { };
+      validationRunner = pkgs.callPackage ./validation-runner.nix { webkit = validation; };
     in
     {
       packages.${system} = {
         default = webkit;
         webkitgtk_4_1 = webkit;
+        validation = validation;
+        validation-run-tests = validationRunner;
+        validation-cache = pkgs.linkFarm "webkitgtk-4.1-libwebrtc-validation-cache" [
+          {
+            name = "out";
+            path = validation.out;
+          }
+          {
+            name = "dev";
+            path = validation.dev;
+          }
+        ];
         # One cache pin protects both the runtime and downstream build headers.
         cache = pkgs.linkFarm "webkitgtk-4.1-libwebrtc-cache" [
           {

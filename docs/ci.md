@@ -99,3 +99,53 @@ The service avoids duplicating paths already present in the upstream NixOS cache
 Sources: [Cachix pin retention](https://docs.cachix.org/pins),
 [Cachix garbage collection](https://docs.cachix.org/garbage-collection),
 [Cachix Action options](https://github.com/cachix/cachix-action).
+
+## Validate the hidden MediaStream fix
+
+Run **Validate patched WebKit and cache** (`validate.yml`) manually in Actions.
+`validation-source.json` pins the fork separately from the daily upstream source:
+currently `monadix/WebKit` at `ae6c8020421750a3078ae823321df0e4183dc703`.
+The updater does not modify this pin.
+
+The workflow has two jobs:
+
+1. **build** has 350 minutes to build the runtime, headers, three GLib API test
+   executables and their fixtures. It exports their complete Nix runtime closure
+   to a compressed GitHub artifact, retained for one day. It does not upload to
+   Cachix. Export and upload share the build job's time budget.
+2. **test-and-cache** has a separate 60-minute budget. It imports that exact
+   closure and runs the new hidden-muted-playback regression, existing page
+   visibility, mute and autoplay cases, and mock getUserMedia permission checks
+   under Xvfb with software rendering. Each case has a two-minute timeout;
+   crashes, skipped/missing cases and assertions fail validation. Logs are kept
+   as a GitHub artifact for 14 days. Only success uploads runtime and headers to
+   `luakit-hardened` and updates
+   `webkitgtk-4.1-libwebrtc-validation-x86_64-linux` with `--keep-revisions 3`.
+
+The validation pin protects three successful **validation** versions separately
+from the daily pin's three upstream versions. The same garbage-collection rules
+above apply. Test binaries, fixtures, debug symbols and build dependencies are
+excluded from the Cachix root. The temporary GitHub artifact includes the test
+runner's full runtime dependencies, so it can be substantially larger than the
+WebKit binary alone. Retry failed test jobs within one day; after artifact
+expiry rerun the entire workflow.
+
+`validation.nix` uses WebKit's `DEVELOPER_MODE` to expose the private symbols
+needed by its GLib API tests. It retains Release compilation, disables layout
+runners, MiniBrowser and Thunder, and builds only the three selected API test
+executables. The packaged test fixtures and library paths refer to installed
+Nix outputs so they survive transfer to another runner. The daily default
+package keeps its existing production configuration.
+
+For the equivalent local build and test:
+
+```sh
+nix build .#validation-cache .#validation-run-tests --no-link
+runner=$(nix path-info .#validation-run-tests)
+"$runner/bin/webkit-validation-tests"
+```
+
+After CI succeeds, use `packages.x86_64-linux.validation` in the Luakit override
+in place of `default`, locked to the repository revision tested by the workflow.
+This selects the same development-mode runtime tested and cached by CI. This
+focused API run does not replace upstream EWS or a real Telemost camera call.

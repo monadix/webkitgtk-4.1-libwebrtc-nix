@@ -22,6 +22,8 @@ webkit.overrideAttrs (old: {
   # Tests run in a separate CI job against these same installed outputs.
   doCheck = false;
   postPatch = (old.postPatch or "") + ''
+    # Developer mode probes this directory, but the sparse source omits benchmark data.
+    rm -rf PerformanceTests
     # Exclude unrelated API executables from the default build/install target.
     substituteInPlace Tools/CMakeLists.txt \
       --replace-fail 'add_subdirectory(TestWebKitAPI)' 'add_subdirectory(TestWebKitAPI EXCLUDE_FROM_ALL)'

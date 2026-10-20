@@ -4,8 +4,10 @@ A pinned development WebKitGTK build for GTK3 applications such as Luakit.
 It retains the `webkit2gtk-4.1` API and Nixpkgs sandbox mounts, adapting their
 patch to WebKit's UTF-8 string API. It adds NASM, libevent, ALSA and Opus, and
 enables `ENABLE_WEB_RTC` without enabling all experimental features. A small
-CMake patch exposes the bundled libvpx headers to LibWebRTC on Linux. Currently
-targets `x86_64-linux`.
+CMake patch exposes the bundled libvpx headers to LibWebRTC on Linux. The
+validation package pins a published fork commit that fixes audio-only
+MediaStream startup and adds its two API tests. Currently targets
+`x86_64-linux`.
 
 `source.json` pins WebKit's commit, source hash, version and date. `flake.lock`
 pins Nixpkgs separately; daily WebKit updates leave Nixpkgs unchanged.
@@ -69,4 +71,4 @@ On other systems, add the equivalent settings to the Nix daemon's `nix.conf`.
 Downloading these public binaries does not require an authentication token.
 
 See [CI setup and retention](docs/ci.md) for daily updates, build workflows,
-cache configuration, rollback behavior and the manual patched-fork validation workflow.
+cache configuration, rollback behavior and the manual fork validation workflow.

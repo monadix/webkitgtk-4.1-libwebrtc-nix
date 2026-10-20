@@ -100,12 +100,22 @@ Sources: [Cachix pin retention](https://docs.cachix.org/pins),
 [Cachix garbage collection](https://docs.cachix.org/garbage-collection),
 [Cachix Action options](https://github.com/cachix/cachix-action).
 
-## Validate the hidden MediaStream fix
+## Validate the MediaStream fixes
 
 Run **Validate patched WebKit and cache** (`validate.yml`) manually in Actions.
 `validation-source.json` pins the fork separately from the daily upstream source:
-currently `monadix/WebKit` at `ae6c8020421750a3078ae823321df0e4183dc703`.
-The updater does not modify this pin.
+currently `monadix/WebKit` at `5a93a3c53026915ae609c5a821b2ba9e15244d07` on
+branch `eng/gstreamer-hidden-mediastream`. The updater does not modify this pin.
+
+That fork commit contains the audio-only MediaStream fix and its two API tests,
+so `validation.nix` builds it without a package-local patch for this change. An
+audio-only MediaStream now reports readiness when its live GStreamer pipeline
+reaches `PAUSED`, the same point at which other live streams already do;
+previously such a stream stayed in `HaveNothing`, so a `play()` whose asynchronous
+media-session admission completed before the pipeline's first state notification
+paused the bootstrapping pipeline and never resumed. The change does not affect
+`paused()`, video first-frame readiness or non-MediaStream behavior. Its two
+API tests are described below.
 
 The workflow has two jobs:
 
@@ -114,13 +124,88 @@ The workflow has two jobs:
    to a compressed GitHub artifact, retained for one day. It does not upload to
    Cachix. Export and upload share the build job's time budget.
 2. **test-and-cache** has a separate 60-minute budget. It imports that exact
-   closure and runs the new hidden-muted-playback regression, existing page
-   visibility, mute and autoplay cases, and mock getUserMedia permission checks
-   under Xvfb with software rendering. Each case has a two-minute timeout;
-   crashes, skipped/missing cases and assertions fail validation. Logs are kept
-   as a GitHub artifact for 14 days. Only success uploads runtime and headers to
+   closure and runs the hidden-muted-playback, audio-only-playback and
+   audio-only-startup-pause MediaStream cases, existing page visibility, mute and
+   autoplay cases, and mock getUserMedia permission checks under Xvfb with
+   software rendering. Each case has a two-minute timeout; crashes,
+   skipped/missing cases and assertions fail validation. Logs are kept as a
+   GitHub artifact for 14 days. Only success uploads runtime and headers to
    `luakit-hardened` and updates
    `webkitgtk-4.1-libwebrtc-validation-x86_64-linux` with `--keep-revisions 3`.
+
+The two new cases execute the pinned engine rather than inspecting it. Both
+build a live audio-only MediaStream from a WebAudio destination, wait for the
+element's `loadstart` event, and then block the page main thread for one second,
+keeping queued state notifications and the media-session admission continuation
+from running while backend work can proceed. `loadstart` is queued immediately
+before the resource load that creates the MediaStream pipeline, so awaiting it
+guarantees the backend load call has run; a synchronous delay at the same point
+would only postpone the queued load. `audio-only-playback` requires the
+element's exposed timeline to advance (`currentTime > 0`), the `playing` event, a
+fulfilled `play()`, and `readyState >= HAVE_FUTURE_DATA`.
+`audio-only-startup-pause` blocks the same way, requires the same timeline
+advance, calls `pause()`, and requires the pending `play()` promise to settle
+(fulfilment or rejection) while the element stays paused with its exposed
+timeline frozen.
+
+MediaStream `currentTime` is synthetic: monotonic time since `play()` or the
+cached paused time, not sink position or rendered samples. The timeline checks
+are therefore behavioral element checks; they do not show that the backend
+started, rendered, or stopped.
+
+Whether an engine without the fix fails these cases depends on event ordering:
+the media-session admission continuation must pause the pipeline before its queued
+`PLAYING` state notification is dispatched. That ordering has not been observed,
+so the cases can under-detect an engine without the fix and, until the negative
+control below has run, only exercise the pinned engine. A pass on the pinned
+engine does not depend on that ordering, because readiness is published inside
+the load task before `play()`.
+
+The runner upranks GStreamer's fake audio sink
+(`GST_PLUGIN_FEATURE_RANK=fakeaudiosink:max`) and fakes a two-channel output, as
+the upstream API test runner does, because both cases play a live audio track.
+The runner executes the test executables directly instead of through
+`run-api-tests`, so it sets those variables itself.
+
+### Negative control for the startup cases
+
+A control needs the same tests compiled against an engine with only the fix
+reverted. That cannot reuse the normal validation build, because it requires a
+full engine build with the developer-mode API tests, so this is a manual CI
+procedure on a throwaway branch and source pin rather than part of the routine
+workflow:
+
+1. Create a throwaway branch from the pinned fork commit.
+2. On that branch, keep the `TestWebKitMediaStream.cpp` tests and their
+   registration, and revert only the fix hunks in
+   `MediaPlayerPrivateGStreamer.cpp` and `.h`. Commit and push that control
+   branch to the fork. Do not add a package-local patch: the control commit
+   itself carries the reverted engine, and the tests remain in the pinned
+   source.
+3. On a throwaway repository branch, point `validation-source.json` at the
+   control commit with its real source hash, using the same sparse checkout as
+   the normal pin. Keep the `DEVELOPER_MODE`, `ENABLE_API_TESTS` and test bundle
+   wiring in `validation.nix` unchanged, so the same tests compile against the
+   reverted engine.
+4. In `validation-runner.nix`, select only
+   `/webkit/WebKitMediaStream/audio-only-playback`, require the TAP result
+   `not ok 1 /webkit/WebKitMediaStream/audio-only-playback`, and skip the Cachix
+   push and pin steps. Only a completed run of that case failing its own
+   assertions is valid evidence; reject `ok 1`, a skipped or missing case, a
+   crash, an unrelated setup failure, or the runner's own `timeout` termination,
+   because none of those show the regression.
+5. Dispatch `validate.yml` on that branch with media logging enabled (WebCore
+   media and GStreamer categories). Its build and test jobs run the same tests
+   against the reverted engine in the same GLib environment.
+6. Expected result: `not ok 1 …` from the test's own assertion. Confirm from
+   those logs that the pipeline reached `PLAYING` and hit the failing order: the
+   admission pause while the pipeline is playing (`updatePlayState …
+   shouldBePlaying = 0, playerPaused = 0`, `Changing state from PLAYING to
+   PAUSED`) before the queued `Changed state from PAUSED to PLAYING`.
+   `currentTime` is synthetic and cannot serve as this evidence. A missing
+   `loadstart`, no backend pipeline, or a pipeline that never requested `PLAYING`
+   is a setup failure, not control evidence. If the case is `ok 1`, the failing
+   ordering was not hit and these cases are not a regression guard.
 
 The validation pin protects three successful **validation** versions separately
 from the daily pin's three upstream versions. The same garbage-collection rules
@@ -148,4 +233,5 @@ runner=$(nix path-info .#validation-run-tests)
 After CI succeeds, use `packages.x86_64-linux.validation` in the Luakit override
 in place of `default`, locked to the repository revision tested by the workflow.
 This selects the same development-mode runtime tested and cached by CI. This
-focused API run does not replace upstream EWS or a real Telemost camera call.
+focused API run does not replace upstream EWS or a real Telemost call with camera
+and incoming audio.

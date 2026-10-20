@@ -27,6 +27,11 @@ writeShellApplication {
     export WEBKIT_INJECTED_BUNDLE_PATH=${webkit}/lib/webkit2gtk-4.1/injected-bundle
     export WEBKIT_INSPECTOR_RESOURCES_PATH=${webkit}/share
     export WEBKIT_GST_ALLOW_PLAYBACK_OF_INVISIBLE_VIDEOS=0
+    # The audio-only MediaStream cases render real audio. Select the fake audio
+    # sink and fake a two-channel output, as the upstream API test runner does,
+    # so neither case opens a sound device.
+    export GST_PLUGIN_FEATURE_RANK=fakeaudiosink:max
+    export WEBKIT_GST_MAX_NUMBER_OF_AUDIO_OUTPUT_CHANNELS=2
     export GDK_BACKEND=x11
     export LIBGL_ALWAYS_SOFTWARE=1
     export LIBGL_DRIVERS_PATH=${mesa}/lib/dri
@@ -67,6 +72,8 @@ writeShellApplication {
       fi
     }
     run_test TestWebKitMediaStream /webkit/WebKitMediaStream/hidden-muted-playback
+    run_test TestWebKitMediaStream /webkit/WebKitMediaStream/audio-only-playback
+    run_test TestWebKitMediaStream /webkit/WebKitMediaStream/audio-only-startup-pause
     run_test TestWebKitWebView /webkit/WebKitWebView/page-visibility
     run_test TestWebKitWebView /webkit/WebKitWebView/is-audio-muted
     run_test TestWebKitWebView /webkit/WebKitWebView/autoplay-policy

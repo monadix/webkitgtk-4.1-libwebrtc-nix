@@ -104,7 +104,7 @@ Sources: [Cachix pin retention](https://docs.cachix.org/pins),
 
 Run **Validate patched WebKit and cache** (`validate.yml`) manually in Actions.
 `validation-source.json` pins the fork separately from the daily upstream source:
-currently `monadix/WebKit` at `5a93a3c53026915ae609c5a821b2ba9e15244d07` on
+currently `monadix/WebKit` at `59e381632401ae854c13af751b9aed32108d754d` on
 branch `eng/gstreamer-hidden-mediastream`. The updater does not modify this pin.
 
 That fork commit contains the audio-only MediaStream fix and its two API tests,
@@ -146,7 +146,9 @@ fulfilled `play()`, and `readyState >= HAVE_FUTURE_DATA`.
 `audio-only-startup-pause` blocks the same way, requires the same timeline
 advance, calls `pause()`, and requires the pending `play()` promise to settle
 (fulfilment or rejection) while the element stays paused with its exposed
-timeline frozen.
+timeline frozen. Their shared setup grants autoplay through the website policy
+before navigation, shows the web view so media resources may load, and bounds
+`AudioContext` resume and close so a setup failure reports the stalled stage.
 
 MediaStream `currentTime` is synthetic: monotonic time since `play()` or the
 cached paused time, not sink position or rendered samples. The timeline checks
@@ -176,12 +178,12 @@ procedure on a throwaway branch and source pin rather than part of the routine
 workflow:
 
 1. Create a throwaway branch from the pinned fork commit.
-2. On that branch, keep the `TestWebKitMediaStream.cpp` tests and their
-   registration, and revert only the fix hunks in
-   `MediaPlayerPrivateGStreamer.cpp` and `.h`. Commit and push that control
-   branch to the fork. Do not add a package-local patch: the control commit
-   itself carries the reverted engine, and the tests remain in the pinned
-   source.
+2. On that branch, keep the `TestWebKitMediaStream.cpp` tests, including their
+   navigation-policy, visibility and bounded `AudioContext` setup, and revert
+   only the fix hunks in `MediaPlayerPrivateGStreamer.cpp` and `.h`. Commit and
+   push that control branch to the fork. Do not add a package-local patch: the
+   control commit itself carries the reverted engine, and the tests remain in
+   the pinned source.
 3. On a throwaway repository branch, point `validation-source.json` at the
    control commit with its real source hash, using the same sparse checkout as
    the normal pin. Keep the `DEVELOPER_MODE`, `ENABLE_API_TESTS` and test bundle

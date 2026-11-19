@@ -104,7 +104,7 @@ Sources: [Cachix pin retention](https://docs.cachix.org/pins),
 
 Run **Validate patched WebKit and cache** (`validate.yml`) manually in Actions.
 `validation-source.json` pins the fork separately from the daily upstream source:
-currently `monadix/WebKit` at `59e381632401ae854c13af751b9aed32108d754d` on
+currently `monadix/WebKit` at `98efec247c8a46e10fab4c5169b4cb577829a5cd` on
 branch `eng/gstreamer-hidden-mediastream`. The updater does not modify this pin.
 
 That fork commit contains the audio-only MediaStream fix and its two API tests,

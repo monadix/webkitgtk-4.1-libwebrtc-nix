@@ -8,6 +8,7 @@
   libevent,
   alsa-lib,
   libopus,
+  openssl,
   source ? builtins.fromJSON (builtins.readFile ./source.json),
 }:
 webkitgtk_4_1.overrideAttrs (oldAttrs: {
@@ -41,6 +42,7 @@ webkitgtk_4_1.overrideAttrs (oldAttrs: {
     libevent
     alsa-lib
     libopus
+    openssl
   ];
   cmakeFlags = oldAttrs.cmakeFlags ++ [ "-DENABLE_WEB_RTC=ON" ];
 })
